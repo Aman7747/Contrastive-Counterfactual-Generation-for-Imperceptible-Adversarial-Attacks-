@@ -40,20 +40,6 @@ CoCoGen combines four main components:
 4. **Masked Momentum Optimization and Adaptive Search**  
    Iterative momentum updates are combined with the spatial and spectral constraints. The sparsity and spectral configuration can be selected using the adaptive search procedure.
 
-The composite feasible set is:
-
-\[
-\mathcal{F}
-=
-\left\{
-\delta:
-\|\delta\|_\infty \leq \epsilon,\;
-\|\delta\|_0 \leq k,\;
-\delta \in \operatorname{Im}(P_f)
-\right\}.
-\]
-
----
 
 ## Repository Structure
 
@@ -62,17 +48,12 @@ CoCoGen/
 ├── README.md
 ├── requirements.txt
 ├── environment.yml
-├── CITATION.cff
 ├── .gitignore
 │
 ├── experiments/
 │   ├── cocogen.py
 │   ├── ablation_cocogen.py
 │   └── transferability_cocogen.py
-│
-├── paper/
-│   ├── cocogen_tmlr.pdf
-│   └── README.md
 │
 ├── figures/
 │   └── README.md
@@ -81,13 +62,7 @@ CoCoGen/
 │   ├── main/
 │   ├── ablations/
 │   ├── transferability/
-│   └── qualitative/
-│
-├── checkpoints/
-│   └── README.md
-│
-└── data/
-    └── README.md
+    └── qualitative/ 
 ```
 
 The three Python files in `experiments/` are the research implementations supplied with this release. They are intentionally kept close to the experimental code used for the reported studies.
