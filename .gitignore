@@ -1,0 +1,35 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.ipynb_checkpoints/
+
+# Local datasets
+data/raw/
+data/imagenet/
+data/cifar100/
+
+# Model weights / checkpoints
+checkpoints/*.pt
+checkpoints/*.pth
+checkpoints/*.ckpt
+checkpoints/*.bin
+checkpoints/*.safetensors
+
+# Generated experiment outputs
+results/**/*.csv
+results/**/*.json
+results/**/*.pt
+results/**/*.pth
+results/**/*.png
+results/**/*.jpg
+results/**/*.jpeg
+
+# Local logs
+*.log
+
+# OS / editor files
+.DS_Store
+.vscode/
+.idea/

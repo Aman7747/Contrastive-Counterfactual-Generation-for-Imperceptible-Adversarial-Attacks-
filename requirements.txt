@@ -1,0 +1,20 @@
+# Core numerical / scientific stack
+numpy
+scipy
+scikit-image
+pandas
+
+# Deep learning
+torch
+torchvision
+timm
+
+# Image / visualization
+Pillow
+matplotlib
+
+# Utilities
+tqdm
+
+# Perceptual metric
+lpips

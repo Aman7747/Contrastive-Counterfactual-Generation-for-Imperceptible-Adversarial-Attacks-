@@ -1,0 +1,21 @@
+name: cocogen
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - numpy
+      - scipy
+      - scikit-image
+      - pandas
+      - pillow
+      - matplotlib
+      - tqdm
+      - lpips
+      - timm
+      # Install torch/torchvision using the CUDA-compatible command
+      # recommended for your system, or add pinned versions here
+      # after freezing the original experimental environment.
