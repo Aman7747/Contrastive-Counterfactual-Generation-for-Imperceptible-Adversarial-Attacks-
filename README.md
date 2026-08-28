@@ -16,9 +16,9 @@ Indian Institute of Technology Madras (Zanzibar Campus)
 
 ## Abstract
 
-CoCoGen is an adversarial attack framework for generating highly effective and visually imperceptible adversarial examples under a composite threat model. The method combines an \(L_\infty\) magnitude budget, an adaptively selected spatial sparsity budget, and a high-frequency spectral constraint.
+CoCoGen is an adversarial attack framework for generating highly effective and visually imperceptible adversarial examples under a composite threat model. The method combines an $L_\infty$ magnitude budget, an adaptively selected spatial sparsity budget, and a high-frequency spectral constraint.
 
-CoCoGen formulates perturbation generation using a contrastive counterfactual margin that explicitly targets the most competitive incorrect class. The perturbation is localized through gradient-based Top-\(k\) spatial projection and constrained to the high-frequency Fourier subspace. Masked momentum-based optimization is then used to cross the decision boundary while preserving perceptual fidelity. An adaptive sparsity/spectral search identifies feasible configurations.
+CoCoGen formulates perturbation generation using a contrastive counterfactual margin that explicitly targets the most competitive incorrect class. The perturbation is localized through gradient-based Top-$k$ spatial projection and constrained to the high-frequency Fourier subspace. Masked momentum-based optimization is then used to cross the decision boundary while preserving perceptual fidelity. An adaptive sparsity/spectral search identifies feasible configurations.
 
 The camera-ready paper reports 100% attack success across the four primary architectures while maintaining high perceptual quality, together with cross-dataset, transferability, ablation, qualitative, and human-perceptual evaluations.
 
@@ -31,7 +31,7 @@ CoCoGen combines four main components:
 1. **Contrastive Counterfactual Guidance (CCG)**  
    The attack minimizes the margin between the true class and the most competitive incorrect class.
 
-2. **Top-\(k\) Spatial Projection**  
+2. **Top-$k$ Spatial Projection**  
    Gradient-based attribution identifies the most decision-relevant pixels and restricts the perturbation support to those locations.
 
 3. **High-Frequency Fourier Projection**  
@@ -53,7 +53,9 @@ CoCoGen/
 ├── experiments/
 │   ├── cocogen.py
 │   ├── ablation_cocogen.py
-│   └── transferability_cocogen.py
+│   ├── transferability_cocogen.py
+│   ├── Hyperparameter_analysis_cocogen.py          ← ViT-B/16 HP sensitivity study
+│   └── adaptive_sparse_freq_pgd_hptuning_fixed.py  ← ResNet50 pixel-weight HP tuning
 │
 ├── figures/
 │   └── README.md
@@ -62,10 +64,11 @@ CoCoGen/
 │   ├── main/
 │   ├── ablations/
 │   ├── transferability/
+│   ├── hyperparameter/
     └── qualitative/ 
 ```
 
-The three Python files in `experiments/` are the research implementations supplied with this release. They are intentionally kept close to the experimental code used for the reported studies.
+The Python files in `experiments/` are the research implementations supplied with this release. They are intentionally kept close to the experimental code used for the reported studies.
 
 ---
 
@@ -222,16 +225,16 @@ The supplied implementation uses the following standard settings:
 
 | Parameter | Value |
 |---|---:|
-| \(L_\infty\) budget \(\epsilon\) | \(8/255\) |
-| Iterations \(T\) | 40 |
-| Step size \(\alpha\) | \(2/255\) |
-| Momentum coefficient \(\mu\) | 1.0 |
-| Frequency threshold \(\tau_{freq}\) | 25 |
+| $L_\infty$ budget $\epsilon$ | $8/255$ |
+| Iterations $T$ | 40 |
+| Step size $\alpha$ | $2/255$ |
+| Momentum coefficient $\mu$ | 1.0 |
+| Frequency threshold $\tau_{freq}$ | 25 |
 | SSIM threshold | 0.95 |
 | FID threshold | 20 |
-| Sparsity \(k\) | Adaptive |
+| Sparsity $k$ | Adaptive |
 
-The main implementation evaluates the four primary architectures and reports clean accuracy, adversarial accuracy, ASR, SSIM, FID, LPIPS, \(L_\infty\), \(L_2\), PSNR, and runtime.
+The main implementation evaluates the four primary architectures and reports clean accuracy, adversarial accuracy, ASR, SSIM, FID, LPIPS, $L_\infty$, $L_2$, PSNR, and runtime.
 
 The supplied experimental script currently uses a limited number of evaluation images for development/experimental execution. Check the script before a full reproduction and set the evaluation count to the intended experimental protocol.
 
@@ -303,8 +306,8 @@ The ablation implementation reports:
 - PSNR
 - LPIPS
 - FID
-- \(L_\infty\)
-- \(L_2\)
+- $L_\infty$
+- $L_2$
 - Average time per image
 
 The supplied code exports ablation and search-strategy CSV files. Keep these under:
@@ -399,7 +402,7 @@ and reports:
 - SSIM
 - LPIPS
 
-The optimization-step experiment evaluates multiple values of \(T\), including:
+The optimization-step experiment evaluates multiple values of $T$, including:
 
 ```text
 T ∈ {10, 25, 50, 100, 200}
@@ -413,7 +416,229 @@ results/transferability/
 
 ---
 
-# 10. CIFAR-100
+# 10. Hyperparameter Sensitivity Study
+
+This section documents the two hyperparameter analysis scripts included in `experiments/`. Together they address the full sensitivity of CoCoGen to its key tunable parameters.
+
+---
+
+## 10.1 CoCoGen ViT-B/16 — Sparsity & Frequency Threshold Study
+
+**Script:**
+```text
+experiments/Hyperparameter_analysis_cocogen.py
+```
+
+**Run:**
+```bash
+python experiments/Hyperparameter_analysis_cocogen.py
+```
+
+This script performs a structured four-stage hyperparameter sensitivity study on ViT-B/16, directly addressing reviewer comment W1 of the TMLR submission.
+
+### Parameters Under Study
+
+| Parameter | Role | Default |
+|---|---|---:|
+| `k` | Spatial sparsity — number of perturbed pixels | Adaptive |
+| `tau_freq` | Radial DFT-bin frequency threshold | 25 |
+| `tau_s` | SSIM quality gate for k* selection | 0.95 |
+| `tau_f` | FID quality gate for k* selection | 20 |
+
+All other parameters are fixed to the paper's Table 1 values:
+
+| Parameter | Value |
+|---|---:|
+| $\epsilon$ | $8/255$ |
+| $\alpha$ | $2/255$ |
+| $T$ | 40 |
+| $\mu$ | 1.0 |
+
+### Four-Stage Protocol
+
+**Stage A — Sparsity Sweep**
+
+Sweeps `k` over the candidate set while holding `tau_freq` fixed at 25:
+
+```text
+k ∈ {1000, 2000, 3000, 4310, 6000, 8000, 9700, 13000, 18000}
+```
+
+Outputs `vitb16_sparsity_sweep.csv` and `vitb16_sparsity_sweep.png`.
+
+**Stage B — Frequency Threshold Sweep**
+
+Sweeps `tau_freq` at the `k*` selected in Stage A:
+
+```text
+tau_freq ∈ {0, 10, 20, 25, 30, 40, 55}
+```
+
+Outputs `vitb16_tau_freq_sweep.csv` and `vitb16_tau_freq_sweep.png`.
+
+**Stage C — Threshold Sensitivity Grid** *(no extra attacks needed)*
+
+Post-hoc analysis showing how the selected `k*` shifts as quality gates are tightened or relaxed:
+
+```text
+tau_s ∈ {0.90, 0.92, 0.95, 0.97, 0.99}
+tau_f ∈ {5, 10, 15, 20, 30, 50}
+```
+
+Outputs `vitb16_threshold_sensitivity.csv` and `vitb16_threshold_sensitivity.png` (heatmap).
+
+**Stage D — Final Confirmation**
+
+Runs the selected `(k*, tau_freq*)` on a larger held-out split (default 60 images) to confirm the chosen configuration.
+
+Outputs `vitb16_final_confirmation.csv`.
+
+### k* Selection Rule (Eq. 19)
+
+```text
+k* = smallest k such that:
+    ASR   = 100%
+    SSIM >= tau_s
+    FID  <= tau_f
+```
+
+### Outputs
+
+All files are saved to:
+```text
+results/hyperparameter/cocogen_vitb16_hparam_analysis/
+```
+
+| File | Description |
+|---|---|
+| `vitb16_sparsity_sweep.csv` | Per-k metrics from Stage A |
+| `vitb16_sparsity_sweep.png` | ASR / SSIM / LPIPS / FID vs k |
+| `vitb16_tau_freq_sweep.csv` | Per-tau_freq metrics from Stage B |
+| `vitb16_tau_freq_sweep.png` | ASR / SSIM / MUSIQ / FID vs tau_freq |
+| `vitb16_threshold_sensitivity.csv` | k* grid from Stage C |
+| `vitb16_threshold_sensitivity.png` | Heatmap of k* vs (tau_s, tau_f) |
+| `vitb16_final_confirmation.csv` | Final confirmation metrics from Stage D |
+
+### Optional: MUSIQ Metric
+
+Install `pyiqa` to enable the MUSIQ no-reference quality metric used in the paper:
+
+```bash
+pip install pyiqa
+```
+
+If `pyiqa` is not installed, MUSIQ columns will be empty and a warning will be printed. All other metrics continue to work normally.
+
+---
+
+## 10.2 ResNet50 — Pixel Selection Weight Tuning
+
+**Script:**
+```text
+experiments/adaptive_sparse_freq_pgd_hptuning_fixed.py
+```
+
+**Run:**
+```bash
+python experiments/adaptive_sparse_freq_pgd_hptuning_fixed.py
+```
+
+This script tunes the pixel selection score weights used in the distortion-aware Top-K mask:
+
+$$S(i,j) = \text{norm}(G(i,j)) \cdot w_{\text{grad}} \;+\; \text{norm}(w(i,j)) \cdot w_{\text{invis}}$$
+
+where:
+- $G(i,j)$ — gradient magnitude at pixel $(i,j)$
+- $w(i,j)$ — invisibility weight (1 − normalised local variance)
+- Both maps are **min-max normalised to $[0,1]$** before weighting, ensuring $w_{\text{grad}}$ and $w_{\text{invis}}$ genuinely control the trade-off
+
+> **Why normalisation matters:** In the original formulation the raw gradient magnitude (scale ~0–10) was combined with the raw invisibility map (scale ~0–1). This caused the gradient term to dominate by 10–100× regardless of the weight values, making all combinations produce near-identical pixel selections. After normalisation, different weight combinations select meaningfully different pixels.
+
+### Weight Combinations Tested
+
+| $(w_{\text{grad}},\ w_{\text{invis}})$ | Description |
+|---|---|
+| (1.0, 0.0) | Pure gradient — no perceptual masking |
+| (0.9, 0.1) | Mostly gradient |
+| (0.8, 0.2) | Moderate masking |
+| **(0.7, 0.3)** | **Original baseline** |
+| (0.6, 0.4) | More invisibility |
+| (0.5, 0.5) | Equal weight |
+| (0.4, 0.6) | Invisibility-dominant |
+| (0.3, 0.7) | Strongly invisibility-biased |
+
+### Search Protocol
+
+For each weight combination the script runs a two-phase binary search to find the minimum $k$ satisfying all quality thresholds simultaneously:
+
+**Phase 1 — Exponential ramp-up** until ASR = 100%.  
+**Phase 2 — Binary search** to minimise $k$ while maintaining:
+
+```text
+ASR   >= 100%
+SSIM  >= 0.99
+PSNR  >= 40 dB
+LPIPS <= 0.05
+FID   <  5.0
+```
+
+Warm-start deltas from the previous $k$ round are reused to accelerate convergence.
+
+### Built-in Diagnostic: Pixel Overlap Check
+
+Before any attack runs, the script automatically computes the **Jaccard overlap matrix** between all weight combinations at a representative $k$ (approximately 2.5% of total pixels):
+
+```text
+Jaccard Overlap Matrix (1.0 = identical selection, 0.0 = no overlap)
+
+              (1.0,0.0)  (0.9,0.1)  ...  (0.3,0.7)
+(1.0,0.0)     1.0000     0.9321    ...   0.6814
+(0.9,0.1)     0.9321     1.0000    ...   0.7102
+...
+(0.3,0.7)     0.6814     0.7102    ...   1.0000
+
+✓ Off-diagonal mean = 0.79 — combos select different pixels.
+```
+
+An off-diagonal mean above 0.95 triggers a warning that the combinations are still too similar, so you can detect any remaining scale issues before committing to a full run.
+
+### Composite Score Ranking
+
+Each combination is ranked by a weighted composite score:
+
+| Metric | Weight |
+|---|---:|
+| ASR | 40% |
+| SSIM | 20% |
+| PSNR | 15% |
+| LPIPS | 15% |
+| FID | 10% |
+
+A small efficiency penalty (−1% per 1,000 extra pixels) rewards combinations that achieve the same quality with fewer perturbed pixels.
+
+### Outputs
+
+All plots are saved to the working directory:
+
+| File | Description |
+|---|---|
+| `hp_tuning_resnet50_fixed_comparison.png` | Bar charts of all 5 metrics + best k across combos |
+| `hp_tuning_resnet50_fixed_k_search.png` | Per-combo k-search trajectories (ramp-up + binary) |
+
+The final ranked table is printed to stdout with columns:
+
+```text
+w_grad | w_invis | Best K | ASR (%) | SSIM | PSNR (dB) | LPIPS | FID | Composite | Time
+```
+
+Move outputs to:
+```text
+results/hyperparameter/
+```
+
+---
+
+# 11. CIFAR-100
 
 The paper includes an additional CIFAR-100 evaluation to examine generalization beyond the primary ImageNet benchmark.
 
@@ -445,7 +670,7 @@ The supplied three scripts are primarily organized around the ImageNet-Mini expe
 
 ---
 
-# 11. Evaluation Metrics
+# 12. Evaluation Metrics
 
 ## Attack Success Rate
 
@@ -477,17 +702,15 @@ Fréchet Inception Distance measures distributional divergence between clean and
 
 Lower is better.
 
-## \(L_\infty\)
+## $L_\infty$
 
 The maximum absolute perturbation value.
 
 The main threat model enforces:
 
-\[
-\|\delta\|_\infty \leq 8/255.
-\]
+$$\|\delta\|_\infty \leq 8/255.$$
 
-## \(L_2\)
+## $L_2$
 
 The Euclidean magnitude of the perturbation.
 
@@ -499,7 +722,7 @@ MUSIQ is used in the paper as an additional no-reference perceptual image-qualit
 
 ---
 
-# 12. Reported Main-Result Configuration
+# 13. Reported Main-Result Configuration
 
 The camera-ready paper specifies:
 
@@ -514,13 +737,13 @@ tau_f         = 20
 k             = adaptive
 ```
 
-The paper selects the frequency threshold \(\tau_{freq}=25\) as the operating point for the main experiments.
+The paper selects the frequency threshold $\tau_{freq}=25$ as the operating point for the main experiments.
 
-For example, the camera-ready frequency sweep reports 100% ASR for \(\tau_{freq}\in\{10,20,25\}\), with \(\tau_{freq}=25\) providing the selected trade-off among attack success and perceptual/distributional metrics.
+For example, the camera-ready frequency sweep reports 100% ASR for $\tau_{freq}\in\{10,20,25\}$, with $\tau_{freq}=25$ providing the selected trade-off among attack success and perceptual/distributional metrics.
 
 ---
 
-# 13. Reproducibility Workflow
+# 14. Reproducibility Workflow
 
 For a fresh environment:
 
@@ -564,9 +787,21 @@ For transferability:
 python experiments/transferability_cocogen.py
 ```
 
+For hyperparameter analysis (ViT-B/16):
+
+```bash
+python experiments/Hyperparameter_analysis_cocogen.py
+```
+
+For pixel-selection weight tuning (ResNet50):
+
+```bash
+python experiments/adaptive_sparse_freq_pgd_hptuning_fixed.py
+```
+
 ---
 
-# 14. Kaggle Execution
+# 15. Kaggle Execution
 
 The supplied implementation supports the Kaggle ImageNet-Mini path:
 
@@ -585,9 +820,21 @@ python experiments/cocogen.py
 
 Enable GPU acceleration in the Kaggle notebook/runtime before executing the experiments.
 
+For the hyperparameter scripts on Kaggle:
+
+```bash
+# ViT-B/16 sensitivity study
+python experiments/Hyperparameter_analysis_cocogen.py
+
+# ResNet50 weight tuning
+python experiments/adaptive_sparse_freq_pgd_hptuning_fixed.py
+```
+
+Both scripts auto-detect the Kaggle dataset path and fall back to it if `DATA_DIR` does not exist locally.
+
 ---
 
-# 15. Qualitative Results
+# 16. Qualitative Results
 
 The paper includes qualitative comparisons between clean images, adversarial outputs, and amplified perturbation maps.
 
@@ -610,7 +857,7 @@ The larger amplification factor used for CoCoGen reflects the substantially smal
 
 ---
 
-# 16. Important Reproducibility Notes
+# 17. Important Reproducibility Notes
 
 ### Dataset order
 
@@ -638,22 +885,13 @@ Runtime depends strongly on GPU model, CUDA version, PyTorch version, metric com
 
 ---
 
-# 17. Threat Model
+# 18. Threat Model
 
 CoCoGen operates under the composite feasible set:
 
-\[
-\mathcal{F}
-=
-\left\{
-\delta:
-\|\delta\|_\infty \leq \epsilon,\;
-\|\delta\|_0 \leq k,\;
-\delta\in\operatorname{Im}(P_f)
-\right\}.
-\]
+$$\mathcal{F} = \left\{ \delta: \|\delta\|_\infty \leq \epsilon,\; \|\delta\|_0 \leq k,\; \delta\in\operatorname{Im}(P_f) \right\}.$$
 
-This is more restrictive than conventional attacks that optimize only an \(L_\infty\) constraint.
+This is more restrictive than conventional attacks that optimize only an $L_\infty$ constraint.
 
 Accordingly, comparisons with unrestricted or less-constrained attacks should be interpreted as comparisons under different feasible sets rather than as claims of universal superiority.
 
@@ -661,7 +899,7 @@ The most direct comparisons are with methods imposing related spatial, frequency
 
 ---
 
-# 18. Responsible Use
+# 19. Responsible Use
 
 This repository is released for research into adversarial robustness, model security, perceptual robustness, and adversarial machine learning.
 
@@ -678,7 +916,7 @@ Potential research applications include:
 
 ---
 
-# 19. Citation
+# 20. Citation
 
 If you use CoCoGen or this implementation in your research, please cite:
 
@@ -701,7 +939,7 @@ for GitHub citation metadata.
 
 ---
 
-# 20. License and Third-Party Components
+# 21. License and Third-Party Components
 
 A repository license should be selected by the authors before the public GitHub release.
 
@@ -711,7 +949,6 @@ This repository does not redistribute ImageNet data or pretrained model weights.
 
 ---
 
-# 21. Contact
+# 22. Contact
 
 For questions regarding the implementation or paper, please use the GitHub issue tracker or the contact information associated with the TMLR/OpenReview submission.
-
