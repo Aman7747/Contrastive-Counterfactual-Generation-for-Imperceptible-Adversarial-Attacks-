@@ -929,26 +929,3 @@ If you use CoCoGen or this implementation in your research, please cite:
 }
 ```
 
-See also:
-
-```text
-CITATION.cff
-```
-
-for GitHub citation metadata.
-
----
-
-# 21. License and Third-Party Components
-
-A repository license should be selected by the authors before the public GitHub release.
-
-Third-party packages, pretrained models, and datasets remain subject to their respective licenses and terms.
-
-This repository does not redistribute ImageNet data or pretrained model weights.
-
----
-
-# 22. Contact
-
-For questions regarding the implementation or paper, please use the GitHub issue tracker or the contact information associated with the TMLR/OpenReview submission.
