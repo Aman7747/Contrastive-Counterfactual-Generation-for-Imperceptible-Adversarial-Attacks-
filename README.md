@@ -2,9 +2,6 @@
 
 [OpenReview]([https://openreview.net/forum?id=dnme31GvOd](https://openreview.net/forum?id=dnme31GvOd&referrer=%5Bthe%20profile%20of%20Aman%20Desai%5D(%2Fprofile%3Fid%3D~Aman_Desai2))
 
----
-
-## Abstract
 
 CoCoGen is an adversarial attack framework for generating highly effective and visually imperceptible adversarial examples under a composite threat model. The method combines an $L_\infty$ magnitude budget, an adaptively selected spatial sparsity budget, and a high-frequency spectral constraint.
 
