@@ -40,6 +40,23 @@ CoCoGen combines four main components:
 4. **Masked Momentum Optimization and Adaptive Search**  
    Iterative momentum updates are combined with the spatial and spectral constraints. The sparsity and spectral configuration can be selected using the adaptive search procedure.
 
+## Attack Architecture
+
+The end-to-end CoCoGen pipeline is illustrated below:
+
+![CoCoGen Attack Architecture](figures/attack_architecture.png)
+
+The pipeline proceeds as follows:
+
+1. **Input** — a clean image $x \in \mathbb{R}^n$.
+2. **Margin $\mathcal{M}(x)$** — the contrastive counterfactual margin is computed as $f_{y_{true}}(x) - \max_{c \neq y_{true}} f_c(x)$, the gap between the true-class logit and the most competitive incorrect-class logit.
+3. **Sensitivity $g$** — the gradient of the margin, $g = |\nabla_x \mathcal{M}(x)|$, is used to rank pixels, and the Top-$k$ most sensitive locations form the support set $\Omega_k$.
+4. **Spatial Mask $M_s$** — a diagonal mask $M_s = \mathrm{diag}(m_s)$ is built from $\Omega_k$, with $m_s[i] = 1$ for $i \in \Omega_k$ and 0 elsewhere.
+5. **Sparse Gradient Step** — the perturbation is updated iteratively over $T$ steps using MIM-style momentum: $\delta_t = \delta_{t-1} - \alpha M_s V_t$.
+6. **Frequency Projection $\mathcal{P}_f$** — the masked update is projected onto the high-frequency Fourier subspace, $\mathcal{P}_f = F^{*} M_f F$, suppressing low-frequency components.
+7. **$L_\infty$ Clipping** — the projected perturbation is clipped to the $L_\infty$ budget via $\ell_\infty\,\mathrm{clip}\,\Pi_\epsilon(\cdot)$.
+8. **Adversarial Output** — the final adversarial example is formed as $x_{adv} = x + \delta_t$.
+9. **Adaptive Grid Search** — the sparsity ($k$) and frequency threshold ($\tau_{freq}$) configuration feeding back into steps 3–6 is selected by the adaptive grid search procedure, which loops back to steps 3 and 6 across candidate configurations until the ASR/SSIM/FID stopping criteria are met.
 
 ## Repository Structure
 
@@ -531,113 +548,6 @@ If `pyiqa` is not installed, MUSIQ columns will be empty and a warning will be p
 
 ---
 
-## 10.2 ResNet50 — Pixel Selection Weight Tuning
-
-**Script:**
-```text
-experiments/adaptive_sparse_freq_pgd_hptuning_fixed.py
-```
-
-**Run:**
-```bash
-python experiments/adaptive_sparse_freq_pgd_hptuning_fixed.py
-```
-
-This script tunes the pixel selection score weights used in the distortion-aware Top-K mask:
-
-$$S(i,j) = \text{norm}(G(i,j)) \cdot w_{\text{grad}} \;+\; \text{norm}(w(i,j)) \cdot w_{\text{invis}}$$
-
-where:
-- $G(i,j)$ — gradient magnitude at pixel $(i,j)$
-- $w(i,j)$ — invisibility weight (1 − normalised local variance)
-- Both maps are **min-max normalised to $[0,1]$** before weighting, ensuring $w_{\text{grad}}$ and $w_{\text{invis}}$ genuinely control the trade-off
-
-> **Why normalisation matters:** In the original formulation the raw gradient magnitude (scale ~0–10) was combined with the raw invisibility map (scale ~0–1). This caused the gradient term to dominate by 10–100× regardless of the weight values, making all combinations produce near-identical pixel selections. After normalisation, different weight combinations select meaningfully different pixels.
-
-### Weight Combinations Tested
-
-| $(w_{\text{grad}},\ w_{\text{invis}})$ | Description |
-|---|---|
-| (1.0, 0.0) | Pure gradient — no perceptual masking |
-| (0.9, 0.1) | Mostly gradient |
-| (0.8, 0.2) | Moderate masking |
-| **(0.7, 0.3)** | **Original baseline** |
-| (0.6, 0.4) | More invisibility |
-| (0.5, 0.5) | Equal weight |
-| (0.4, 0.6) | Invisibility-dominant |
-| (0.3, 0.7) | Strongly invisibility-biased |
-
-### Search Protocol
-
-For each weight combination the script runs a two-phase binary search to find the minimum $k$ satisfying all quality thresholds simultaneously:
-
-**Phase 1 — Exponential ramp-up** until ASR = 100%.  
-**Phase 2 — Binary search** to minimise $k$ while maintaining:
-
-```text
-ASR   >= 100%
-SSIM  >= 0.99
-PSNR  >= 40 dB
-LPIPS <= 0.05
-FID   <  5.0
-```
-
-Warm-start deltas from the previous $k$ round are reused to accelerate convergence.
-
-### Built-in Diagnostic: Pixel Overlap Check
-
-Before any attack runs, the script automatically computes the **Jaccard overlap matrix** between all weight combinations at a representative $k$ (approximately 2.5% of total pixels):
-
-```text
-Jaccard Overlap Matrix (1.0 = identical selection, 0.0 = no overlap)
-
-              (1.0,0.0)  (0.9,0.1)  ...  (0.3,0.7)
-(1.0,0.0)     1.0000     0.9321    ...   0.6814
-(0.9,0.1)     0.9321     1.0000    ...   0.7102
-...
-(0.3,0.7)     0.6814     0.7102    ...   1.0000
-
-✓ Off-diagonal mean = 0.79 — combos select different pixels.
-```
-
-An off-diagonal mean above 0.95 triggers a warning that the combinations are still too similar, so you can detect any remaining scale issues before committing to a full run.
-
-### Composite Score Ranking
-
-Each combination is ranked by a weighted composite score:
-
-| Metric | Weight |
-|---|---:|
-| ASR | 40% |
-| SSIM | 20% |
-| PSNR | 15% |
-| LPIPS | 15% |
-| FID | 10% |
-
-A small efficiency penalty (−1% per 1,000 extra pixels) rewards combinations that achieve the same quality with fewer perturbed pixels.
-
-### Outputs
-
-All plots are saved to the working directory:
-
-| File | Description |
-|---|---|
-| `hp_tuning_resnet50_fixed_comparison.png` | Bar charts of all 5 metrics + best k across combos |
-| `hp_tuning_resnet50_fixed_k_search.png` | Per-combo k-search trajectories (ramp-up + binary) |
-
-The final ranked table is printed to stdout with columns:
-
-```text
-w_grad | w_invis | Best K | ASR (%) | SSIM | PSNR (dB) | LPIPS | FID | Composite | Time
-```
-
-Move outputs to:
-```text
-results/hyperparameter/
-```
-
----
-
 # 11. CIFAR-100
 
 The paper includes an additional CIFAR-100 evaluation to examine generalization beyond the primary ImageNet benchmark.
@@ -885,38 +795,7 @@ Runtime depends strongly on GPU model, CUDA version, PyTorch version, metric com
 
 ---
 
-# 18. Threat Model
-
-CoCoGen operates under the composite feasible set:
-
-$$\mathcal{F} = \left\{ \delta: \|\delta\|_\infty \leq \epsilon,\; \|\delta\|_0 \leq k,\; \delta\in\operatorname{Im}(P_f) \right\}.$$
-
-This is more restrictive than conventional attacks that optimize only an $L_\infty$ constraint.
-
-Accordingly, comparisons with unrestricted or less-constrained attacks should be interpreted as comparisons under different feasible sets rather than as claims of universal superiority.
-
-The most direct comparisons are with methods imposing related spatial, frequency, or perceptual constraints.
-
----
-
-# 19. Responsible Use
-
-This repository is released for research into adversarial robustness, model security, perceptual robustness, and adversarial machine learning.
-
-Users should only evaluate systems for which they have appropriate authorization.
-
-Potential research applications include:
-
-- adversarial robustness benchmarking
-- security evaluation
-- studying model decision boundaries
-- evaluating adversarial defenses
-- perceptual robustness research
-- benchmarking sparse and frequency-constrained attacks
-
----
-
-# 20. Citation
+# 18. Citation
 
 If you use CoCoGen or this implementation in your research, please cite:
 
@@ -928,4 +807,3 @@ If you use CoCoGen or this implementation in your research, please cite:
   year    = {2026}
 }
 ```
-
