@@ -1,15 +1,5 @@
 # CoCoGen: Contrastive Counterfactual Generation for Imperceptible Adversarial Attacks
 
-Official research implementation accompanying:
-
-**Contrastive Counterfactual Generation for Imperceptible Adversarial Attacks**
-
-Aman Desai, Hitika Tiwari, Tushar Shinde  
-Department of Data Science & AI, School of Engineering and Science  
-Indian Institute of Technology Madras (Zanzibar Campus)
-
-**Transactions on Machine Learning Research (TMLR), 2026**
-
 [OpenReview]([https://openreview.net/forum?id=dnme31GvOd](https://openreview.net/forum?id=dnme31GvOd&referrer=%5Bthe%20profile%20of%20Aman%20Desai%5D(%2Fprofile%3Fid%3D~Aman_Desai2))
 
 ---
