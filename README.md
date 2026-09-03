@@ -71,8 +71,8 @@ CoCoGen/
 │   ├── cocogen.py
 │   ├── ablation_cocogen.py
 │   ├── transferability_cocogen.py
-│   ├── Hyperparameter_analysis_cocogen.py          ← ViT-B/16 HP sensitivity study
-│   └── adaptive_sparse_freq_pgd_hptuning_fixed.py  ← ResNet50 pixel-weight HP tuning
+│   └── Hyperparameter_analysis_cocogen.py  ← ViT-B/16 HP sensitivity study
+│   
 │
 ├── figures/
 │   └── README.md
